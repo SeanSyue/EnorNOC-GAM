@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+DT_4_ind
+all-data/*
+*_cache/*
+*_files/*
+*.txt
