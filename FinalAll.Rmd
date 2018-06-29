@@ -3,9 +3,9 @@ title: "FinalAll"
 author: "Yu-Chen Xue"
 date: "2018年6月21日"
 output:
+  html_document: default
   pdf_document:
     latex_engine: xelatex
-  html_document: default
   word_document: default
 header-includes: \usepackage{ctex}
 ---
@@ -50,9 +50,6 @@ library(ggplot2)
 ##　讀取資料
 ```{r}
 DT <- as.data.table(read_feather("D:/WORKSPACE/RProjects/EnorNOC-GAM/DT_4_ind"))
-```
-
-```{r}
 str(DT)
 ```
 
