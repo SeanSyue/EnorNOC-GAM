@@ -1,0 +1,146 @@
+---
+title: "StageThree"
+author: "Yu-Chen Xue"
+date: "2018年6月21日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# 3. 分析解釋變量的重要情況
+
+## 現在來看看減少剔除部分解釋變數對模型的有什麼樣的影響
+```{r}
+gam_6D <- gam(Load ~ t2(Daily, 
+                       k = period,
+                       bs = "cr",
+                       full = TRUE),
+             data = matrix_gam,
+             family = gaussian)
+ 
+summary(gam_6D)$r.sq
+summary(gam_6D)$sp.criterion
+```
+嗯，明顯效果變差了
+
+## 這回剔除`Daily`這個因素
+```{r}
+gam_6W <- gam(Load ~ t2(Weekly,
+                       k = 7,
+                       bs =  "ps",
+                       full = TRUE),
+             data = matrix_gam,
+             family = gaussian)
+ 
+summary(gam_6W)$r.sq
+summary(gam_6W)$sp.criterion
+```
+可以看到這下效果更糟糕了
+
+## 保持著嚴謹的態度，使用anova來比較這三個模型的差異
+## 先看看剔除`Weekly`會造成怎麼樣的差異
+```{r}
+anova(gam_6, gam_6D, test="F")
+```
+
+## 再看看剔除`Daily`會造成怎麼樣的差異
+```{r}
+anova(gam_6, gam_6W, test="F")
+```
+結果顯而易見，`Weekly`因素和`Daily`因素缺一不可！
+
+## 作圖展示不考慮`Weekly`因素的模型的擬合效果：
+```{r, fig.width=12}
+datas <- rbindlist(list(data_r[, .(value, date_time)],
+                        data.table(value = gam_6D$fitted.values,
+                                   data_time = data_r[, date_time])))
+datas[, type := c(rep("Real", nrow(data_r)), rep("Fitted", nrow(data_r)))]
+ 
+ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
+  geom_line(size = 0.8) +
+  theme_bw() +
+  labs(x = "Time", y = "Load (kW)",
+       title = "Fit from GAM n.6")
+```
+可以看出沒有考慮`Weekly`因素的話，預測結果不會體現週次不同所造成的用電起伏變化
+
+## 作圖展示不考慮`Daily`因素的模型的擬合效果：
+```{r, fig.width=12}
+datas <- rbindlist(list(data_r[, .(value, date_time)],
+                        data.table(value = gam_6W$fitted.values,
+                                   data_time = data_r[, date_time])))
+datas[, type := c(rep("Real", nrow(data_r)), rep("Fitted", nrow(data_r)))]
+ 
+ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
+  geom_line(size = 0.8) +
+  theme_bw() +
+  labs(x = "Time", y = "Load (kW)",
+       title = "Fit from GAM n.6")
+```
+可以看出沒有考慮`Daily`因素的話，預測結果不會體現一天24小時內的用電起伏變化
+
+
+```{r}
+predWeek <- function(data, set_of_date){
+  
+  # Subsetting the dataset by dates
+  data_train <- data[date %in% set_of_date]
+  
+  N <- nrow(data_train)
+  window <- N / period # number of days in the train set
+  # 1, ..., period, 1, ..., period - and so on for the daily season 
+  # Using feature "week_num" for the weekly season
+  matrix_train <- data.table(Load = data_train[, value],
+                           Daily = as.factor(rep(1:period, window)),
+                           Weekly = as.factor(data_train[, week_num]))
+  
+  # Creation of the model
+  lm_m <- lm(Load ~ 0 + Daily + Weekly + Daily:Weekly, data = matrix_train)
+  
+  # Creation of the forecast for one week ahead
+  pred_week <- predict(lm_m, matrix_train[1:(7*period), -1, with = FALSE])
+  
+  return(as.vector(pred_week))
+}
+```
+
+# 4. 預測電耗
+## 最後，最振奮人心的——預測接下來兩周的用電量
+```{r, fig.width=12}
+data_test <- DT[(type == n_type[1] & date %in% n_date[71:84])]
+matrix_test <- data.table(Load = data_test[, value],
+                           Daily = rep(1:period, window),
+                           Weekly = data_test[, week_num])
+pred_week <- predict(gam_6, matrix_test[1:(7*period)],interval="confidence", level = 0.95)
+
+datat <- rbindlist(list(data_test[, .(value, date_time)],
+                        data.table(value = pred_week,
+                                   data_time = data_test[, date_time])))
+datat[, type := c(rep("Real", nrow(data_test)), rep("Predicted", nrow(data_test)))]
+ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
+  geom_line(size = 0.8) +
+  theme_bw() +
+  labs(x = "Time", y = "Load (kW)",
+       title = "Predicted result on GAM n.6")
+```
+
+
+## 預測接下來一個月的用電量
+```{r, fig.width=12}
+data_test <- DT[(type == n_type[1] & date %in% n_date[71:98])]
+matrix_test <- data.table(Load = data_test[, value],
+                           Daily = rep(1:period, window),
+                           Weekly = data_test[, week_num])
+pred_week <- predict(gam_6, matrix_test[1:(7*period)],interval="confidence", level = 0.95)
+
+datat <- rbindlist(list(data_test[, .(value, date_time)],
+                        data.table(value = pred_week,
+                                   data_time = data_test[, date_time])))
+datat[, type := c(rep("Real", nrow(data_test)), rep("Predicted", nrow(data_test)))]
+ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
+  geom_line(size = 0.8) +
+  theme_bw() +
+  labs(x = "Time", y = "Load (kW)",
+       title = "Predicted result on GAM n.6")
+```

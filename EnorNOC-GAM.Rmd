@@ -2,13 +2,18 @@
 title: "EnorNOC-GAM"
 author: "Yu-Chen Xue"
 date: "2018年6月13日"
-output: html_document
+output:
+  html_document: default
+  pdf_document:
+    latex_engine: xelatex
+  word_document: default
+header-includes: \usepackage{ctex}
 ---
 
 ```{r setup, include=FALSE}
 library(knitr)
 opts_chunk$set(echo = TRUE)
-opts_knit$set(root.dir = 'D:/WORKSPACE/RProjects/EnorNOC-GAM/all-data/csv')
+# opts_knit$set(root.dir = 'D:/WORKSPACE/RProjects/EnorNOC-GAM/all-data/csv')
 ```
 
 ## GAM methods are implemented in R in the package mgcv.
@@ -62,6 +67,7 @@ library(data.table)
 library(feather)
 DT <- as.data.table(read_feather("D:/WORKSPACE/RProjects/EnorNOC-GAM/DT_4_ind"))
 ```
+
 
 使用package `car`中的function `record`，將週次改為interger
 ```{r, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE, cache.vars='DT', results='hide'}

@@ -1,0 +1,184 @@
+---
+title: "StageTwo"
+author: "Yu-Chen Xue"
+date: "2018年6月21日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 這回，我們使用interaction的方法，把`Daily`和`Weekly`同時進行考量，重建模型，
+```{r}
+gam_2 <- gam(Load ~ s(Daily, Weekly),
+             data = matrix_gam,
+             family = gaussian)
+ 
+summary(gam_2)$r.sq
+summary(gam_2)$sp.criterion
+```
+根據R.sq和p-value可以看出，這個模型比上一個模型來的更好
+
+## 畫出這個模型的預測結果和實際結果的比較
+```{r, fig.width=12}
+datas <- rbindlist(list(data_r[, .(value, date_time)],
+                        data.table(value = gam_2$fitted.values,
+                                   data_time = data_r[, date_time])))
+datas[, type := c(rep("Real", nrow(data_r)), rep("Fitted", nrow(data_r)))]
+ 
+ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
+  geom_line(size = 0.8) +
+  theme_bw() +
+  labs(x = "Time", y = "Load (kW)",
+       title = "Fit from GAM n.2")
+```
+這回明顯可以看出：禮拜一到禮拜四的擬合效果提升了不少
+
+## 接著使用另一種更進階的Interaction方法，這回使用另外一種稱為"tensor product"的smooth function類型
+```{r}
+gam_3 <- gam(Load ~ te(Daily, Weekly,
+                       bs = c("cr", "ps")),
+             data = matrix_gam,
+             family = gaussian)
+ 
+summary(gam_3)$r.sq
+summary(gam_3)$sp.criterion
+```
+
+## 作圖分析`gam_3`
+```{r, fig.width=12}
+datas <- rbindlist(list(data_r[, .(value, date_time)],
+                        data.table(value = gam_3$fitted.values,
+                                   data_time = data_r[, date_time])))
+datas[, type := c(rep("Real", nrow(data_r)), rep("Fitted", nrow(data_r)))]
+ 
+ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
+  geom_line(size = 0.8) +
+  theme_bw() +
+  labs(x = "Time", y = "Load (kW)",
+       title = "Fit from GAM n.3")
+```
+
+## 我們還可以做得更好，比如讓smooth function的knots（類似維度的概念）更接近每天和每周的週期性情況
+```{r}
+gam_4 <- gam(Load ~ te(Daily, Weekly,
+                        k = c(period, 7),
+                        bs = c("cr", "ps")),
+              data = matrix_gam,
+              family = gaussian)
+ 
+summary(gam_4)$r.sq
+summary(gam_4)$sp.criterion
+```
+可以看見R-sq又上升了一點點，關鍵是edf value上升了5倍之多。
+
+## 畫出`gam_4`的圖像
+```{r, fig.width=12}
+datas <- rbindlist(list(data_r[, .(value, date_time)],
+                        data.table(value = gam_4$fitted.values,
+                                   data_time = data_r[, date_time])))
+datas[, type := c(rep("Real", nrow(data_r)), rep("Fitted", nrow(data_r)))]
+ 
+ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
+  geom_line(size = 0.8) +
+  theme_bw() +
+  labs(x = "Time", y = "Load (kW)",
+       title = "Fit from GAM n.4")
+```
+
+## 好了，加入我們想要貪婪一點，把前面的一些方法都加進來，結果會怎麼樣呢？這裡構建一個`gam_5`來驗證一下
+
+```{r}
+gam_5 <- gam(Load ~ s(Daily, bs = "cr", k = period) +
+                    s(Weekly, bs = "ps", k = 7) +
+                    ti(Daily, Weekly,
+                       k = c(period, 7),
+                       bs = c("cr", "ps")),
+             data = matrix_gam,
+             family = gaussian)
+ 
+summary(gam_5)$r.sq
+summary(gam_5)$sp.criterion
+```
+雖然p-value一樣為0，R-sq數值下降了一點，GCV數值上升了，說明這個模型不如前面的`gam_4`來的好
+## 畫出`gam_5`的圖像
+```{r, fig.width=12}
+datas <- rbindlist(list(data_r[, .(value, date_time)],
+                        data.table(value = gam_5$fitted.values,
+                                   data_time = data_r[, date_time])))
+datas[, type := c(rep("Real", nrow(data_r)), rep("Fitted", nrow(data_r)))]
+ 
+ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
+  geom_line(size = 0.8) +
+  theme_bw() +
+  labs(x = "Time", y = "Load (kW)",
+       title = "Fit from GAM n.5")
+```
+## 呼～，這回是最後一個招數了，這裡再多嘗試一個tensor product interactions方法，並設定`full = TRUE`來設定更加嚴格的懲罰條件
+
+```{r}
+gam_6 <- gam(Load ~ t2(Daily, Weekly,
+                       k = c(period, 7),
+                       bs = c("cr", "ps"),
+                       full = TRUE),
+             data = matrix_gam,
+             family = gaussian)
+ 
+summary(gam_6)$r.sq
+summary(gam_6)$sp.criterion
+```
+
+
+
+## 畫圖分析`gam_6`的效果
+```{r, fig.width=12}
+datas <- rbindlist(list(data_r[, .(value, date_time)],
+                        data.table(value = gam_6$fitted.values,
+                                   data_time = data_r[, date_time])))
+datas[, type := c(rep("Real", nrow(data_r)), rep("Fitted", nrow(data_r)))]
+ 
+ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
+  geom_line(size = 0.8) +
+  theme_bw() +
+  labs(x = "Time", y = "Load (kW)",
+       title = "Fit from GAM n.6")
+```
+這個圖就看上去漂亮很多了
+
+
+# 這麽多模型，要怎麼看誰的效果最好呢？交給萬能的`AIC`來解決吧
+```{r}
+AIC(gam_1, gam_2, gam_3, gam_4, gam_5, gam_6)
+```
+很明顯`gam_4`, `gam_5`, `gam_6`是優勝組，其中`gam_6`是最好的那一個，緊隨其後的是`gam_4`
+
+## 接下來就`gam_4`, `gam_6`這幾個模型單獨畫圖看看結果是什麼樣的吧
+```{r, fig.width=12}
+layout(matrix(1:2, nrow = 1))
+plot(gam_4, rug = FALSE, se = FALSE, n2 = 80, main = "gam n.4 with te()")
+plot(gam_6, rug = FALSE, se = FALSE, n2 = 80, main = "gam n.6 with t2()")
+```
+這些類似等高線的圖像顯示了各個模型對`Weekly`和`Daily`的反應情況。`gam_4`, `gam_6`類似，但`gam_6`的圖形有更多的波動性，說明它的靈敏程度更好。
+
+## 最後在這個章節結束前，看看怎麼把`gam_6`的圖像畫得更好看吧。首先使用`mgcv`套件包裡的`vis.gam`功能
+```{r, fig.width=12}
+#　vis.gam(gam_6, main = "t2(D, W)", plot.type = "contour",
+#　        color = "terrain", contour.col = "black", lwd = 2)
+vis.gam(gam_6, main = "t2(D, W)", 
+        color = "terrain", contour.col = "black", lwd = 2)
+```
+可以看出，平日的用電量比週末來得多很多，每天的工作時間用電量比較大，禮拜一到禮拜四的下午3點左右是用電最高峰時期。
+
+## 加入不使用`contour.col`選項，還可以作一個3D版本的圖
+```{r, fig.width=12}
+vis.gam(gam_6, n.grid = 50, theta = 35, phi = 32, zlab = "",
+        ticktype = "detailed", color = "topo", main = "t2(D, W)")
+```
+
+## 轉換一下視角
+```{r, fig.width=12}
+vis.gam(gam_6, n.grid = 50, theta = 190, phi = 20, zlab = "",
+        ticktype = "detailed", color = "topo", main = "t2(D, W)")
+```
+

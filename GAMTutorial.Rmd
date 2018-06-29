@@ -1,0 +1,162 @@
+---
+title: "GAMTutorial"
+author: "Prof. Sheng-Luen Chung"
+date: "2018年6月10日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+rm(list=ls())
+```
+
+以下資料是由：https://raw.githubusercontent.com/shifteight/R/master/TRB/data/ozone.data.txt
+
+Data frame with components: ozone, radiation, temperature, and wind.
+Measurements of daily ozone concentration (ppb) 
+每日臭氧濃度, wind speed (mph),
+daily maximum tempera- ture (degrees F), and solar radiation
+(langleys) on 111 days from May to September 1973 in New York.  This
+data frame is similar to air in S-PLUS (or library(data) in S), but
+has a different definition for ozone (air contains cube-roots of
+ozone).
+
+https://zh.wikipedia.org/wiki/%E8%87%AD%E6%B0%A7
+
+因臭氧反應活性遠遠比氧（O2）強，是強氧化劑，對植物、動物及很多結構材料如塑膠、橡膠有害。它還會傷害肺組織，嚴重會導致肺出血而死亡，因此當空氣中臭氧含量過高時，一般建議老人和幼兒不宜於戶外作劇烈運動，以免吸入過量臭氧。低層空氣中臭氧有時稱為「有害的」臭氧，主要源於汽機車排氣中二氧化氮產生的光化學煙霧。
+
+由於工業和汽車廢氣的影響，尤其在大城市周圍農林地區，在地表臭氧會形成和聚集。地表臭氧對人體，尤其是對眼睛、呼吸道等有侵蝕和損害作用。地表臭氧也對農作物或森林有害。
+
+與「有害的」臭氧相反，「有益的」臭氧存在於地球大氣層的平流層上部，覆蓋著地球表面，阻隔大部分破壞生物組織的太陽紫外線輻射。而稀薄的臭氧會給人以清新的感覺，因此在大雷雨後，空氣總是特別清新。
+
+
+```{r}
+ozone.pollution <- read.table("ozone.data.txt", header=T)
+names(ozone.pollution)
+dim(ozone.pollution)
+str(ozone.pollution)
+```
+
+# 用之前學的 Linear Regresson 來作迴歸分析
+
+```{r}
+attach(ozone.pollution)
+modlm <- lm(ozone ~ rad + temp + wind )
+plot(ozone ~ modlm$fitted, pch=16)
+abline(0,1, col="red")
+```
+
+```{r}
+summary(modlm)
+```
+
+# 再來試試 GAM 的作法
+
+```{r}
+#install.packages("mgcv") 如果之前沒有授過的話
+library(mgcv)
+```
+
+```{r}
+attach(ozone.pollution)
+modgam <- gam(ozone ~ s(rad) + s(temp) + s(wind) )
+plot(ozone ~ modgam$fitted, pch=16)
+abline(0,1, col="red")
+
+```
+
+```{r}
+summary(modgam)
+```
+
+## 請專注在 r-SQ. (ADJ) 上的對照
+
+```{r}
+anova(modgam)
+```
+
+
+```{r}
+modlm <- lm(ozone ~ rad + temp + wind)
+summary(modlm)
+```
+
+```{r}
+anova(modlm)
+```
+
+## 那比一下 aic 好了，比較公允
+
+```{r}
+AIC(modlm)
+```
+
+
+```{r}
+AIC(modgam)
+```
+
+## 取 aic 為小的：又準又精潔！
+
+
+## 畫各個 smooth function 長的樣子
+
+```{r}
+plot(modgam, residuals=T, pch=16) 
+```
+
+以下是不畫出殘差的圖
+
+
+```{r}
+plot(modgam, pch=16) 
+```
+
+##再來看，誰 (哪一個解釋變數) 可以丟掉？
+
+```{r}
+modgam2 <- update(modgam, ~. - s(rad) )
+modgam3 <- update(modgam, ~. - s(temp) )
+modgam4 <- update(modgam, ~. - s(wind) )
+
+```
+
+```{r}
+anova(modgam, modgam2, test="F")
+
+```
+
+```{r}
+anova(modgam, modgam3, test="F")
+
+```
+
+```{r}
+anova(modgam, modgam4, test="F")
+
+```
+
+## 如果我們將第一個變數 rad 強制使用 linear regression 的話，也就是不是 smooth function，而為 $\beta$
+
+```{r}
+modgam5 <- gam(ozone ~ rad + s(temp) + s(wind) )
+summary(modgam5)
+```
+
+
+
+```{r}
+anova(modgam, modgam5, test="F")
+```
+
+解讀為：下面那一個 model，雖然少了約 3 df, (也就是少用三個參數)，但是沒解釋的 deviance 也多了不少。
+
+```{r}
+AIC(modgam)
+AIC(modgam5)
+```
+

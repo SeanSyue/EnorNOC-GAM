@@ -1,0 +1,274 @@
+---
+title: "GAM 應用於使用電量的預測"
+author: "陳逸勳"
+date: "2018-06-12"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document: default
+  word_document: default
+header-includes: \usepackage{ctex}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# 我們用由數位電表所取得一年265天，每天24小時的電耗值 (也就是使用電量) 資料。
+# 以一年中的第幾天，一天中的第機會小時，(另外再加上其他資訊)，來預測使用的電量。
+
+讀入電耗資料：某大學的校園使電量
+
+```{r cars}
+#setwd("D:/迴歸/GAM")
+# rm(list=ls())
+Consumption.data = read.csv("D:\\WORKSPACE\\DATASETS\\Consumption_PerHour2017.csv")
+# head(Consumption.data, 10)
+typeof(Consumption.data)
+```
+先看資料的分佈
+
+```{r}
+names(Consumption.data)
+summary(Consumption.data)
+```
+
+
+我們深信使用電量與當天是否有上課有關，而最簡單的分類是，告天是星期幾。
+新增一欄DayOfWeek，1~7代表星期一到星期日
+
+2017/1/1是禮拜天
+
+```{r}
+Consumption.data$DayOfWeek = Consumption.data$DayOfYear %% 7 - 1
+Consumption.data$DayOfWeek[which(Consumption.data$DayOfWeek <= 0)] = Consumption.data$DayOfWeek[which(Consumption.data$DayOfWeek <= 0)] + 7
+head(Consumption.data, 10)
+```
+
+##先試畫幾張天的用電狀況：
+畫出1月1日電耗圖
+
+但因為這天是國定假日，即特殊情形，所以電耗與我們預想的規律不太相同
+
+```{r}
+plot(Consumption.data$Consumption[1:24], type = 'o', xlab = "Hour of Day", ylab = "Consumption", main = "1月1日")
+```
+
+1月2號因為1月1號是周日有補假，故用電情形也是特例，所以我們直接看第三天，1月3日-平日的用電狀況
+
+```{r}
+plot(Consumption.data$Consumption[49:72], type = 'l', xlab = "Hour of Day", ylab = "Consumption", main = "1月3日")
+```
+
+##這是正常的校園用電曲線，在白天用電較高，晚上則較低
+
+
+接下來我們來看看一周的用電狀況
+
+
+```{r}
+plot(Consumption.data$Consumption[193:360], type = 'l', xlab = "Day of Week", ylab = "Consumption", main = "1月9日-1月15日")
+```
+
+這邊畫出1月9日(星期一)到1月16日(星期日)的用電，這也是典型的校園一周用電趨勢，週一到週五的用電較高，六、日校園無人故用電量較低
+
+##接著看看一年的用電狀況
+
+
+```{r, fig.width=12}
+plot(Consumption.data$Consumption, type = 'l', xlab = "Day of Year", ylab = "Consumption", main = "2017")
+```
+
+2月左右因為放寒假所以用電量較低，越接近夏天，即4~\6月，用電會增高(放冷氣)，但在7~\9月學校放暑假用電也是呈現較低的狀況，開學後則又恢復與暑假前相似的用電量，之後越接近冬天用電也逐漸下降。
+
+***
+
+##開始使用 GAM 套件對這一整年的電耗資料進行分析。
+
+在使用GAM前要安裝"mgcv"這個package
+**mgcv: Mixed GAM Computation Vehicle with Automatic Smoothness Estimation**
+
+在引入後就能用gam這個函式來做塑模
+
+為了在資料解讀上更易讀，我們會先把DayOfWeek轉成factor
+
+相關變數：
+1. 響應變數：電耗 Comsumption
+2. 日中之時：HourOfDay，接頭接尾
+3. 年中之日：DayOfYear，接頭接尾
+4. 週中之日：DayOfWeek (Factor)
+
+```{r}
+# install.packages("mgcv")
+library(mgcv)
+Consumption.data$DayOfWeek = factor(Consumption.data$DayOfWeek, labels = c("Mon","Tue","Wed","Thu","Fri","Sat","Sun"))
+modgam = gam(formula = Consumption ~ s(HourOfDay, bs='cc') + s(DayOfYear, bs = 'cc') + DayOfWeek, family = gaussian(link = identity), data = Consumption.data)
+summary(modgam)
+```
+
+##畫出塑模後預測一天的結果與實際值比較
+
+```{r}
+library(ggplot2)
+Consumption.data$Predict = modgam$fitted.values
+ggplot(Consumption.data[49:72,], aes(1:24)) + labs(x = "Hour of Day") + 
+    geom_line(aes(y = Consumption, color = "Real")) + 
+    geom_line(aes(y = Predict, color = "Predict"))
+```
+
+塑模結果確實與我們預想一樣，在中午前電耗遞增，中午後遞減
+
+
+##接著是一週的預測結果
+
+```{r}
+ggplot(Consumption.data[193:360,], aes(1:168)) + labs(x = "Day of Week") + 
+    geom_line(aes(y = Consumption, color = "Real")) + 
+    geom_line(aes(y = Predict, color = "Predict"))
+```
+
+在星期一到星期五預測的結果都比較高，六、日則較低
+
+##接著看整年的預測結果
+
+
+```{r}
+ggplot(Consumption.data, aes(1:8726)) +  labs(x = "Day of Year") + 
+    geom_line(aes(y = Consumption, color = "Real")) + 
+    geom_line(aes(y = Predict, color = "Predict"))
+```
+
+在寒暑假電耗較低，並且越接近夏天電耗越高，越接近冬天電耗越低
+
+## 之前 linear regression 時，相對應的 $\beta_i$ 為一個數字，但現在 s(HourOfDay) 以及 s(DayOfYear) 為 smooth function，要如何表達呢？
+```{r}
+modgam$coefficients
+```
+
+## 注意其中 DayOfWeek 的變化
+
+```{r}
+modgam$coefficients[1:7]
+plot(modgam$coefficients[1:7])
+```
+##其中第一項並非對應星期一的，而是所有的 baseline 的因素加入之後的平均電耗值。即為 1082。
+
+## 更方便讀 s(HourOfDay) 以及 s(DayOfYear) 的方法是畫出來：
+```{r}
+plot(modgam, residuals = T,pch = 16)
+```
+
+## 接下來看看個項因素在解釋響應變數上的貢獻
+
+逐一拿掉一項來看看：
+```{r}
+modgam2 <- update(modgam, ~. - s(HourOfDay, bs='cc') )
+modgam3 <- update(modgam, ~. - s(DayOfYear, bs='cc') )
+modgam4 <- update(modgam, ~. - DayOfWeek )
+```
+
+## 以下是不考量 HourOfDay 的因素
+```{r}
+Consumption.data$Predict2 = modgam2$fitted.values
+ggplot(Consumption.data[193:360,], aes(1:168)) + labs(x = "Day of Week", title = "- s(HourOfDay, bs='cc') ") + 
+    geom_line(aes(y = Consumption, color = "Real")) + 
+    geom_line(aes(y = Predict2, color = " - s(HourOfDay, bs='cc') "))
+```
+
+```{r}
+anova(modgam, modgam2, test="F")
+```
+
+```{r}
+648896122/7.9867
+1375910302/727014180
+```
+
+## 以下是不考量 DayOfYear 的因素
+```{r}
+Consumption.data$Predict3 = modgam3$fitted.values
+ggplot(Consumption.data, aes(1:8726)) + labs(x = "Day of Year", title = " - s(DayOfYear, bs='cc') ") + 
+    geom_line(aes(y = Consumption, color = "Real")) + 
+    geom_line(aes(y = Predict3, color = " - s(DayOfYear, bs='cc') "))
+```
+
+```{r}
+anova(modgam, modgam3, test="F")
+```
+
+## 以下是不考量 HourOfWeek 的因素
+```{r}
+Consumption.data$Predict4 = modgam4$fitted.values
+ggplot(Consumption.data[193:360,], aes(1:168)) + labs(x = "Day of Week", title = "- DayOfWeek") + 
+    geom_line(aes(y = Consumption, color = "Real")) + 
+    geom_line(aes(y = Predict4, color = " - DayOfWeek "))
+```
+
+
+```{r}
+anova(modgam, modgam4, test="F")
+```
+
+
+## 以下是將 HourOfDay 硬看成是「線性關係」時，也就是只用一個 $\beta$ 來代表其貢獻
+```{r}
+modgam5 = gam(formula = Consumption ~ HourOfDay + s(DayOfYear, bs = 'cc') + DayOfWeek, family = gaussian(link = identity), data = Consumption.data)
+summary(modgam5)
+```
+
+```{r}
+Consumption.data$Predict5 = modgam5$fitted.values
+ggplot(Consumption.data[193:360,], aes(1:168)) + labs(x = "Day of Week") + 
+    geom_line(aes(y = Consumption, color = "Real")) + 
+    geom_line(aes(y = Predict5, color = "Predict"))
+```
+## 以下是用來對比用線性以及用 smooth function 的差別
+
+```{r}
+anova(modgam, modgam5, test="F")
+```
+
+
+# 預測
+
+我們用一個假的資料來看看預測結果，比較凌晨、中午，星期幾，四季的預測結果
+
+
+```{r}
+test.data = data.frame(
+  HourOfDay = c(1, 1, 1, 1, 12, 12, 12, 12, 1, 1, 1, 1, 12, 12, 12, 12), DayOfYear = c(45, 135, 225, 315), DayOfWeek = factor(c(3,3,3,3,3,3,3,3,6,6,6,6,6,6,6,6), labels = c("Wed", "Sat"))
+)
+test.data
+```
+
+
+
+```{r}
+test.data$predict_response = predict(object = modgam, test.data, type = "response")
+test.data$predict_link = predict(object = modgam, test.data, type = "link")
+test.data
+```
+
+上面的結果可以蠻明顯的看出白天的電耗都比凌晨高很多，並且星期三的電耗也比星期六來的高。
+
+接著我們來比較四季，在冬天電耗最低，且DayOfYear是45時大約是放寒假的時候，所以電耗也會特別低。在春天(DayOfYear=135)時電耗是最高的，因為越來越接近夏天，大家都會開冷氣，而夏天電耗反而比春、秋天低，因為暑假時校園沒人，所以才會有這個情形，最後秋天的電耗是次高的。
+
+
+```{r}
+modgam6 = gam(formula = Consumption ~ s(HourOfDay, bs='cc', by = DayOfWeek) + s(DayOfYear, bs = 'cc'), family = gaussian(link = identity), data = Consumption.data)
+summary(modgam6)
+```
+
+```{r}
+anova(modgam, modgam6, test="F")
+```
+#其實差不多
+
+```{r}
+plot(modgam6, residuals = T,pch = 16)
+```
+實在難以決定，那就問 AIC 吧！
+```{r}
+AIC(modgam)
+AIC(modgam6)
+```
+
