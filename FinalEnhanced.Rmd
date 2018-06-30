@@ -1,5 +1,5 @@
 ---
-title: "FinalEnhanced
+title: "FinalEnhanced"
 author: "Yu-Chen Xue"
 date: "2018年6月30日"
 output:
@@ -42,6 +42,7 @@ Generalized additive model (GAM)
 ```{r}
 library(feather)
 library(data.table)
+library(dplyr)
 library(mgcv)
 library(car)
 library(ggplot2)
@@ -50,9 +51,6 @@ library(ggplot2)
 ##　讀取資料
 ```{r}
 DT <- as.data.table(read_feather("D:/WORKSPACE/RProjects/EnorNOC-GAM/DT_4_ind"))
-```
-
-```{r}
 str(DT)
 ```
 
@@ -476,7 +474,6 @@ ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
        title = "Predicted result on GAM n.6")
 ```
 
-
 # 期末結束新增的部分：
 
 
@@ -550,7 +547,8 @@ gam_new_1 <- gam(Load ~ s(Daily, bs = "cr", k = period) +
 
 ## 第一個模型的數據分析
 ```{r}
-gam_eval(gam_new_1)
+eval_1 <- gam_eval(gam_new_1)
+eval_1
 ```
 
 ## 第一個模型的擬合狀況圖像
@@ -567,7 +565,8 @@ gam_new_2 <- gam(Load ~ s(Daily, Weekly),
 
 ## 第二個模型的數據分析
 ```{r}
-gam_eval(gam_new_2)
+eval_2 <- gam_eval(gam_new_2)
+eval_2
 ```
 
 ## 第二個模型的擬合狀況圖像
@@ -585,7 +584,8 @@ gam_new_3 <- gam(Load ~ te(Daily, Weekly,
 
 ## 第三個模型的數據分析
 ```{r}
-gam_eval(gam_new_3)
+eval_3 <- gam_eval(gam_new_3)
+eval_3
 ```
 
 ## 第三個模型的擬合狀況圖像
@@ -604,72 +604,187 @@ gam_new_4 <- gam(Load ~ te(Daily, Weekly,
 
 ## 第四個模型的數據分析
 ```{r}
-gam_eval(gam_new_4)
+eval_4 <- gam_eval(gam_new_4)
+eval_4
+```
+
+## 第四個模型的擬合狀況圖像
+```{r, fig.width=13}
+gam_plot(gam_new_4, "Fit from gam_new_4")
+```
+
+## 建立第五個模型
+```{r}
+gam_new_5 <- gam(Load ~ s(Daily, bs = "cr", k = period) +
+                    s(Weekly, bs = "ps", k = 7) +
+                    ti(Daily, Weekly,
+                       k = c(period, 7),
+                       bs = c("cr", "ps")),
+             data = matrix_new,
+             family = gaussian)
+```
+
+## 第五個模型的數據分析
+```{r}
+eval_5 <- gam_eval(gam_new_5)
+eval_5
+```
+
+## 第五個模型的擬合狀況圖像
+```{r, fig.width=13}
+gam_plot(gam_new_5, "Fit from gam_new_5")
+```
+
+## 建立第六個模型
+```{r}
+gam_new_6 <- gam(Load ~ t2(Daily, Weekly,
+                       k = c(period, 7),
+                       bs = c("cr", "ps"),
+                       full = TRUE),
+             data = matrix_new,
+             family = gaussian)
+```
+
+## 第六個模型的數據分析
+```{r}
+eval_6 <- gam_eval(gam_new_6)
+eval_6
+```
+
+## 第六個模型的擬合狀況圖像
+```{r, fig.width=13}
+gam_plot(gam_new_6, "Fit from gam_new_6")
 ```
 
 
-
-
+## 構建第七個模型——不使用smooth function的gam模型：
 ```{r}
-gam_new_te <- gam(Load ~ te(Daily, Weekly,
-                        k = c(period, 7),
-                        bs = c("cr", "ps")),
+gam_new_simple <- gam(Load ~ Daily+Weekly,
               data = matrix_new,
               family = gaussian)
 ```
 
-## `gam_new_te`的summary
+## 第七個模型的數據分析
 ```{r}
-gam_eval(gam_new_te)
+eval_7 <- gam_eval(gam_new_simple)
+eval_7
 ```
 
-## `gam_new_te`的擬合狀況圖像
-```{r, fig.width=12}
-datas <- rbindlist(list(data_new[, .(value, date_time)],
-                        data.table(value = gam_new_te$fitted.values,
-                                   data_time = data_new[, date_time])))
-datas[, type := c(rep("Real", nrow(data_new)), rep("Fitted", nrow(data_new)))]
- 
-ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
+## 第七個模型的擬合狀況圖像
+```{r, fig.width=13}
+gam_plot(gam_new_simple, "Fit from gam_new_simple")
+```
+
+## 建立第八個模型——只對Daily作te smooth function
+```{r}
+gam_new_te_daily <- gam(Load ~ te(Daily, bs = "cr", k = period) +Weekly,
+             data = matrix_new,
+             family = gaussian)
+```
+
+## 第八個模型的數據分析
+```{r}
+eval_8 <- gam_eval(gam_new_te_daily)
+eval_8
+```
+
+## 第八個模型的擬合狀況圖像
+```{r, fig.width=13}
+gam_plot(gam_new_te_daily, "Fit from gam_new_te_daily")
+```
+
+## 建立第九個模型——只對Weekly作te smooth function
+```{r}
+gam_new_te_weekly <- gam(Load ~ te(Weekly, bs = "ps", k = 7) +Daily,
+             data = matrix_new,
+             family = gaussian)
+```
+
+## 第九個模型的數據分析
+```{r}
+eval_9 <- gam_eval(gam_new_te_weekly)
+eval_9
+```
+
+## 第九模型的擬合狀況圖像
+```{r, fig.width=13}
+gam_plot(gam_new_te_weekly, "Fit from gam_new_te_weekly")
+```
+
+## 用表格查看9個模型的數據分析
+```{r}
+eval_table <- bind_rows(eval_1, eval_2, eval_3, eval_4, eval_5, eval_6, eval_7, eval_8, eval_9)
+all_aic <- AIC(gam_new_1, gam_new_2, gam_new_3, gam_new_4, gam_new_5, gam_new_6, gam_new_simple, gam_new_te_daily, gam_new_te_weekly)$AIC
+
+eval_table[, AIC :=all_aic]
+eval_table
+```
+
+## 使用第四個model預測當年第二個季度
+```{r, fig.width=13}
+data_test_2qt <- DT[(type == n_type[1] & date %in% n_date[92:183])]
+matrix_test_2qt <- data.table(Load = data_test_2qt[, value],
+                           Daily = rep(1:period, 91),
+                           Weekly = data_test_2qt[, week_num])
+pred_2qt <- predict(gam_new_4, matrix_test_2qt[1:(7*period)],interval="confidence", level = 0.95)
+
+datat <- rbindlist(list(data_test_2qt[, .(value, date_time)],
+                        data.table(value = pred_2qt,
+                                   data_time = data_test_2qt[, date_time])))
+datat[, type := c(rep("Real", nrow(data_test_2qt)), rep("Predicted", nrow(data_test_2qt)))]
+ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
   geom_line(size = 0.8) +
   theme_bw() +
   labs(x = "Time", y = "Load (kW)",
-       title = "Fit from GAM n.4")
-```
-可以看出
-
-## 第一個GAM模型`gam_new_t2`
-```{r}
-gam_new_t2 <- gam(Load ~ t2(Daily, Weekly,
-                        k = c(period, 7),
-                        bs = c("cr", "ps"),
-                  full = TRUE),
-              data = matrix_new,
-              family = gaussian)
+       title = "Predicted result on GAM n.6")
 ```
 
-## `gam_new_t2`的summary
-```{r}
-summary(gam_new_t2)$r.sq
-summary(gam_new_t2)$sp.criterion
-```
+## 使用第四個model預測當年第三個季度
+```{r, fig.width=13}
+data_test_3qt <- DT[(type == n_type[1] & date %in% n_date[183:274])]
+matrix_test_3qt <- data.table(Load = data_test_3qt[, value],
+                           Daily = rep(1:period, 91),
+                           Weekly = data_test_3qt[, week_num])
+pred_3qt <- predict(gam_new_4, matrix_test_3qt[1:(7*period)],interval="confidence", level = 0.95)
 
-## `gam_new_t2`的擬合狀況圖像
-```{r, fig.width=12}
-datas <- rbindlist(list(data_new[, .(value, date_time)],
-                        data.table(value = gam_new_t2$fitted.values,
-                                   data_time = data_new[, date_time])))
-datas[, type := c(rep("Real", nrow(data_new)), rep("Fitted", nrow(data_new)))]
- 
-ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
+datat <- rbindlist(list(data_test_3qt[, .(value, date_time)],
+                        data.table(value = pred_3qt,
+                                   data_time = data_test_3qt[, date_time])))
+datat[, type := c(rep("Real", nrow(data_test_3qt)), rep("Predicted", nrow(data_test_3qt)))]
+ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
   geom_line(size = 0.8) +
   theme_bw() +
   labs(x = "Time", y = "Load (kW)",
-       title = "Fit from GAM n.4")
+       title = "Predicted result on GAM n.6")
 ```
 
+
+## 使用第四個model預測當年第四個季度
+```{r, fig.width=13}
+data_test_4qt <- DT[(type == n_type[1] & date %in% n_date[274:365])]
+matrix_test_4qt <- data.table(Load = data_test_4qt[, value],
+                           Daily = rep(1:period, 91),
+                           Weekly = data_test_4qt[, week_num])
+pred_4qt <- predict(gam_new_4, matrix_test_4qt[1:(7*period)],interval="confidence", level = 0.95)
+
+datat <- rbindlist(list(data_test_4qt[, .(value, date_time)],
+                        data.table(value = pred_4qt,
+                                   data_time = data_test_4qt[, date_time])))
+datat[, type := c(rep("Real", nrow(data_test_4qt)), rep("Predicted", nrow(data_test_4qt)))]
+ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
+  geom_line(size = 0.8) +
+  theme_bw() +
+  labs(x = "Time", y = "Load (kW)",
+       title = "Predicted result on GAM n.6")
+```
+
+
+## 計算prediciton 的 MAPE
 ```{r}
-AIC(gam_new_t2, gam_new_te)
+mape_2qt <- mape(matrix_test_2qt[1:(7*period)]$Load, pred_2qt)
+mape_3qt <- mape(matrix_test_3qt[1:(7*period)]$Load, pred_3qt)
+mape_4qt <- mape(matrix_test_4qt[1:(7*period)]$Load, pred_4qt)
+mapes <- cbind(mape_2qt, mape_3qt, mape_4qt)
+mapes
 ```
-
 

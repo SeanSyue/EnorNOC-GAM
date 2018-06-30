@@ -6,4 +6,5 @@ DT_4_ind
 all-data/*
 *_cache/*
 *_files/*
+Regression-Final-Extend-M10607801/*
 *.txt
