@@ -3,9 +3,9 @@ title: "FinalEnhanced"
 author: "Yu-Chen Xue"
 date: "2018年6月30日"
 output:
-  html_document: default
   pdf_document:
     latex_engine: xelatex
+  html_document: default
   word_document: default
 header-includes: \usepackage{ctex}
 ---
@@ -39,23 +39,23 @@ Generalized additive model (GAM)
 # 1. 資料集分析
 
 ## 引入必要的模組
-```{r}
+```{r, warning=FALSE}
 library(feather)
 library(data.table)
-library(dplyr)
 library(mgcv)
 library(car)
 library(ggplot2)
+library(dplyr, warn.conflicts = FALSE)
 ```
 
 ##　讀取資料
-```{r}
+```{r, warning=FALSE}
 DT <- as.data.table(read_feather("D:/WORKSPACE/RProjects/EnorNOC-GAM/DT_4_ind"))
 str(DT)
 ```
 
 ## 畫圖查看資料
-```{r fig1, fig.height = 8, fig.width = 12, fig.align = "center", na.rm=TRUE}
+```{r fig1, fig.height = 8, fig.width = 12, fig.align = "center", na.rm=TRUE, warning=FALSE}
 ggplot(data = DT, aes(x = date, y = value)) +
   geom_line() + 
   facet_grid(type ~ ., scales = "free_y") +
@@ -91,7 +91,7 @@ period <- 48
 
 ## 截取兩個禮拜內的商業用樓房的電耗記錄，並儲存在data_r變量中。之後畫圖展示之。
 ## `type == n_type[1]`表示"Commercial Property", `date %in% n_date[57:70]`表示兩個禮拜
-```{r, fig2, fig.height = 6, fig.width = 12, fig.align = "center", na.rm=TRUE}
+```{r, fig2, fig.height = 6, fig.width = 12, fig.align = "center", na.rm=TRUE, warning=FALSE}
 data_r <- DT[(type == n_type[1] & date %in% n_date[57:70])]
 
 ggplot(data_r, aes(date_time, value)) +
@@ -135,7 +135,7 @@ summary(gam_1)$sp.criterion
 GCV是表示擬合情況的一個指標，越小說明模型的擬合效果越好。另外可以看出，R-sq的數值不高，這個模型效果不好
 
 ## 查看這兩個禮拜的用電量的情況實際值與預測值的比較。
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 matrix_gam$Predict=gam_1$fitted.values
 ggplot(matrix_gam[1:nrow(matrix_gam),], aes(1:nrow(matrix_gam)))+
            labs('lab')+
@@ -144,7 +144,7 @@ ggplot(matrix_gam[1:nrow(matrix_gam),], aes(1:nrow(matrix_gam)))+
 ```
 
 ## 看上去狀況並不好，仔細看第一個禮拜的情況
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 row_Mon <- nrow(matrix_gam)/2
 matrix_gam$Predict=gam_1$fitted.values
 ggplot(matrix_gam[1:row_Mon,], aes(1:row_Mon))+
@@ -154,7 +154,7 @@ ggplot(matrix_gam[1:row_Mon,], aes(1:row_Mon))+
 ```
 ## 這個模型只能預測平日用電的*趨勢*，而具體*電耗值*卻沒辦法準確預測。在仔細看看禮拜一的用電狀況
 
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 row_Mon <- nrow(matrix_gam)/14
 matrix_gam$Predict=gam_1$fitted.values
 ggplot(matrix_gam[1:row_Mon,], aes(1:row_Mon))+
@@ -176,7 +176,7 @@ summary(gam_2)$sp.criterion
 根據R.sq和p-value可以看出，這個模型比上一個模型來的更好
 
 ## 畫出這個模型的預測結果和實際結果的比較
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 datas <- rbindlist(list(data_r[, .(value, date_time)],
                         data.table(value = gam_2$fitted.values,
                                    data_time = data_r[, date_time])))
@@ -202,7 +202,7 @@ summary(gam_3)$sp.criterion
 ```
 
 ## 作圖分析`gam_3`
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 datas <- rbindlist(list(data_r[, .(value, date_time)],
                         data.table(value = gam_3$fitted.values,
                                    data_time = data_r[, date_time])))
@@ -229,7 +229,7 @@ summary(gam_4)$sp.criterion
 可以看見R-sq又上升了一點點，關鍵是edf value上升了5倍之多。
 
 ## 畫出`gam_4`的圖像
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 datas <- rbindlist(list(data_r[, .(value, date_time)],
                         data.table(value = gam_4$fitted.values,
                                    data_time = data_r[, date_time])))
@@ -258,7 +258,7 @@ summary(gam_5)$sp.criterion
 ```
 雖然p-value一樣為0，R-sq數值下降了一點，GCV數值上升了，說明這個模型不如前面的`gam_4`來的好
 ## 畫出`gam_5`的圖像
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 datas <- rbindlist(list(data_r[, .(value, date_time)],
                         data.table(value = gam_5$fitted.values,
                                    data_time = data_r[, date_time])))
@@ -287,7 +287,7 @@ summary(gam_6)$sp.criterion
 
 
 ## 畫圖分析`gam_6`的效果
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 datas <- rbindlist(list(data_r[, .(value, date_time)],
                         data.table(value = gam_6$fitted.values,
                                    data_time = data_r[, date_time])))
@@ -380,7 +380,7 @@ anova(gam_6, gam_6W, test="F")
 結果顯而易見，`Weekly`因素和`Daily`因素缺一不可！
 
 ## 作圖展示不考慮`Weekly`因素的模型的擬合效果：
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 datas <- rbindlist(list(data_r[, .(value, date_time)],
                         data.table(value = gam_6D$fitted.values,
                                    data_time = data_r[, date_time])))
@@ -395,7 +395,7 @@ ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
 可以看出沒有考慮`Weekly`因素的話，預測結果不會體現週次不同所造成的用電起伏變化
 
 ## 作圖展示不考慮`Daily`因素的模型的擬合效果：
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 datas <- rbindlist(list(data_r[, .(value, date_time)],
                         data.table(value = gam_6W$fitted.values,
                                    data_time = data_r[, date_time])))
@@ -436,7 +436,7 @@ predWeek <- function(data, set_of_date){
 
 # 4. 預測電耗
 ## 最後，最振奮人心的——預測接下來兩周的用電量
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 data_test <- DT[(type == n_type[1] & date %in% n_date[71:84])]
 matrix_test <- data.table(Load = data_test[, value],
                            Daily = rep(1:period, window),
@@ -456,7 +456,7 @@ ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
 
 
 ## 預測接下來一個月的用電量
-```{r, fig.width=12, na.rm=TRUE}
+```{r, fig.width=12, na.rm=TRUE, warning=FALSE}
 data_test <- DT[(type == n_type[1] & date %in% n_date[71:98])]
 matrix_test <- data.table(Load = data_test[, value],
                            Daily = rep(1:period, window),
@@ -512,7 +512,7 @@ ggplot(data = datas, aes(date_time, value, group = type, colour = type)) +
 
 
 ## 利用第一個季度的資料構建訓練集
-```{r, fig.width=12}
+```{r, fig.width=12, warning=FALSE}
 data_new <- DT[(type == n_type[1] & date %in% n_date[1:91])]
 
 ggplot(data_new, aes(date_time, value)) +
@@ -552,7 +552,7 @@ eval_1
 ```
 
 ## 第一個模型的擬合狀況圖像
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 gam_plot(gam_new_1, "Fit from gam_new_1")
 ```
 
@@ -570,7 +570,7 @@ eval_2
 ```
 
 ## 第二個模型的擬合狀況圖像
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 gam_plot(gam_new_2, "Fit from gam_new_2")
 ```
 
@@ -589,7 +589,7 @@ eval_3
 ```
 
 ## 第三個模型的擬合狀況圖像
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 gam_plot(gam_new_3, "Fit from gam_new_3")
 ```
 
@@ -609,7 +609,7 @@ eval_4
 ```
 
 ## 第四個模型的擬合狀況圖像
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 gam_plot(gam_new_4, "Fit from gam_new_4")
 ```
 
@@ -631,7 +631,7 @@ eval_5
 ```
 
 ## 第五個模型的擬合狀況圖像
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 gam_plot(gam_new_5, "Fit from gam_new_5")
 ```
 
@@ -652,7 +652,7 @@ eval_6
 ```
 
 ## 第六個模型的擬合狀況圖像
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 gam_plot(gam_new_6, "Fit from gam_new_6")
 ```
 
@@ -671,7 +671,7 @@ eval_7
 ```
 
 ## 第七個模型的擬合狀況圖像
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 gam_plot(gam_new_simple, "Fit from gam_new_simple")
 ```
 
@@ -689,7 +689,7 @@ eval_8
 ```
 
 ## 第八個模型的擬合狀況圖像
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 gam_plot(gam_new_te_daily, "Fit from gam_new_te_daily")
 ```
 
@@ -707,21 +707,23 @@ eval_9
 ```
 
 ## 第九模型的擬合狀況圖像
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 gam_plot(gam_new_te_weekly, "Fit from gam_new_te_weekly")
 ```
 
 ## 用表格查看9個模型的數據分析
-```{r}
+```{r, warning=FALSE}
 eval_table <- bind_rows(eval_1, eval_2, eval_3, eval_4, eval_5, eval_6, eval_7, eval_8, eval_9)
 all_aic <- AIC(gam_new_1, gam_new_2, gam_new_3, gam_new_4, gam_new_5, gam_new_6, gam_new_simple, gam_new_te_daily, gam_new_te_weekly)$AIC
 
 eval_table[, AIC :=all_aic]
+eval_table <- data.table(MODELS=c("gam_new_1 ", "gam_new_2", "gam_new_3", "gam_new_4", "gam_new_5", "gam_new_6", "gam_new_simple", "gam_new_te_daily", "gam_new_te_weekly"), eval_table)
 eval_table
 ```
 
+
 ## 使用第四個model預測當年第二個季度
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 data_test_2qt <- DT[(type == n_type[1] & date %in% n_date[92:183])]
 matrix_test_2qt <- data.table(Load = data_test_2qt[, value],
                            Daily = rep(1:period, 91),
@@ -740,7 +742,7 @@ ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
 ```
 
 ## 使用第四個model預測當年第三個季度
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 data_test_3qt <- DT[(type == n_type[1] & date %in% n_date[183:274])]
 matrix_test_3qt <- data.table(Load = data_test_3qt[, value],
                            Daily = rep(1:period, 91),
@@ -760,7 +762,7 @@ ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
 
 
 ## 使用第四個model預測當年第四個季度
-```{r, fig.width=13}
+```{r, fig.width=13, warning=FALSE}
 data_test_4qt <- DT[(type == n_type[1] & date %in% n_date[274:365])]
 matrix_test_4qt <- data.table(Load = data_test_4qt[, value],
                            Daily = rep(1:period, 91),
@@ -787,4 +789,3 @@ mape_4qt <- mape(matrix_test_4qt[1:(7*period)]$Load, pred_4qt)
 mapes <- cbind(mape_2qt, mape_3qt, mape_4qt)
 mapes
 ```
-

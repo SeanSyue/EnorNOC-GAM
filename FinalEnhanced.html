@@ -156,34 +156,13 @@ $(document).ready(function () {
 <h2>引入必要的模組</h2>
 <pre class="r"><code>library(feather)
 library(data.table)
-library(dplyr)</code></pre>
-<pre><code>## 
-## Attaching package: 'dplyr'</code></pre>
-<pre><code>## The following objects are masked from 'package:data.table':
-## 
-##     between, first, last</code></pre>
-<pre><code>## The following objects are masked from 'package:stats':
-## 
-##     filter, lag</code></pre>
-<pre><code>## The following objects are masked from 'package:base':
-## 
-##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>library(mgcv)</code></pre>
+library(mgcv)</code></pre>
 <pre><code>## Loading required package: nlme</code></pre>
-<pre><code>## 
-## Attaching package: 'nlme'</code></pre>
-<pre><code>## The following object is masked from 'package:dplyr':
-## 
-##     collapse</code></pre>
 <pre><code>## This is mgcv 1.8-23. For overview type 'help(&quot;mgcv-package&quot;)'.</code></pre>
 <pre class="r"><code>library(car)</code></pre>
 <pre><code>## Loading required package: carData</code></pre>
-<pre><code>## 
-## Attaching package: 'car'</code></pre>
-<pre><code>## The following object is masked from 'package:dplyr':
-## 
-##     recode</code></pre>
-<pre class="r"><code>library(ggplot2)</code></pre>
+<pre class="r"><code>library(ggplot2)
+library(dplyr, warn.conflicts = FALSE)</code></pre>
 </div>
 <div class="section level2">
 <h2>　讀取資料</h2>
@@ -884,48 +863,32 @@ eval_9</code></pre>
 <pre class="r"><code>eval_table &lt;- bind_rows(eval_1, eval_2, eval_3, eval_4, eval_5, eval_6, eval_7, eval_8, eval_9)
 all_aic &lt;- AIC(gam_new_1, gam_new_2, gam_new_3, gam_new_4, gam_new_5, gam_new_6, gam_new_simple, gam_new_te_daily, gam_new_te_weekly)$AIC
 
-eval_table[, AIC :=all_aic]</code></pre>
-<pre><code>## Warning in `[.data.table`(eval_table, , `:=`(AIC, all_aic)):
-## Invalid .internal.selfref detected and fixed by taking a (shallow) copy
-## of the data.table so that := can add this new column by reference. At
-## an earlier point, this data.table has been copied by R (or been created
-## manually using structure() or similar). Avoid key&lt;-, names&lt;- and attr&lt;-
-## which in R currently (and oddly) may copy the whole data.table. Use set*
-## syntax instead to avoid copying: ?set, ?setnames and ?setattr. Also, in
-## R&lt;=v3.0.2, list(DT1,DT2) copied the entire DT1 and DT2 (R's list() used to
-## copy named objects); please upgrade to R&gt;v3.0.2 if that is biting. If this
-## message doesn't help, please report to data.table issue tracker so the root
-## cause can be fixed.</code></pre>
-<pre class="r"><code>eval_table</code></pre>
-<pre><code>##          RSQ      GCV      MAPE      AIC
-## 1: 0.7194149 311287.5 18.899761 67646.26
-## 2: 0.8487935 168039.3 10.623654 64953.21
-## 3: 0.8423209 175028.3 10.189855 65131.27
-## 4: 0.8796766 135799.2  8.319575 64020.79
-## 5: 0.8801601 135306.0  8.337419 64004.82
-## 6: 0.8802681 134768.2  8.326550 63987.99
-## 7: 0.4302044 629325.7 25.613586 70721.15
-## 8: 0.6366094 402558.4 20.441993 68769.43
-## 9: 0.5124041 539142.0 24.278996 70045.54</code></pre>
+eval_table[, AIC :=all_aic]
+eval_table &lt;- data.table(MODELS=c(&quot;gam_new_1 &quot;, &quot;gam_new_2&quot;, &quot;gam_new_3&quot;, &quot;gam_new_4&quot;, &quot;gam_new_5&quot;, &quot;gam_new_6&quot;, &quot;gam_new_simple&quot;, &quot;gam_new_te_daily&quot;, &quot;gam_new_te_weekly&quot;), eval_table)
+eval_table</code></pre>
+<pre><code>##               MODELS       RSQ      GCV      MAPE      AIC
+## 1:        gam_new_1  0.7194149 311287.5 18.899761 67646.26
+## 2:         gam_new_2 0.8487935 168039.3 10.623654 64953.21
+## 3:         gam_new_3 0.8423209 175028.3 10.189855 65131.27
+## 4:         gam_new_4 0.8796766 135799.2  8.319575 64020.79
+## 5:         gam_new_5 0.8801601 135306.0  8.337419 64004.82
+## 6:         gam_new_6 0.8802681 134768.2  8.326550 63987.99
+## 7:    gam_new_simple 0.4302044 629325.7 25.613586 70721.15
+## 8:  gam_new_te_daily 0.6366094 402558.4 20.441993 68769.43
+## 9: gam_new_te_weekly 0.5124041 539142.0 24.278996 70045.54</code></pre>
 </div>
 <div id="model" class="section level2">
 <h2>使用第四個model預測當年第二個季度</h2>
 <pre class="r"><code>data_test_2qt &lt;- DT[(type == n_type[1] &amp; date %in% n_date[92:183])]
 matrix_test_2qt &lt;- data.table(Load = data_test_2qt[, value],
                            Daily = rep(1:period, 91),
-                           Weekly = data_test_2qt[, week_num])</code></pre>
-<pre><code>## Warning in data.table(Load = data_test_2qt[, value], Daily =
-## rep(1:period, : Item 2 is of size 4368 but maximum size is 4416 (recycled
-## leaving remainder of 48 items)</code></pre>
-<pre class="r"><code>pred_2qt &lt;- predict(gam_new_4, matrix_test_2qt[1:(7*period)],interval=&quot;confidence&quot;, level = 0.95)
+                           Weekly = data_test_2qt[, week_num])
+pred_2qt &lt;- predict(gam_new_4, matrix_test_2qt[1:(7*period)],interval=&quot;confidence&quot;, level = 0.95)
 
 datat &lt;- rbindlist(list(data_test_2qt[, .(value, date_time)],
                         data.table(value = pred_2qt,
-                                   data_time = data_test_2qt[, date_time])))</code></pre>
-<pre><code>## Warning in data.table(value = pred_2qt, data_time = data_test_2qt[,
-## date_time]): Item 1 is of size 336 but maximum size is 4416 (recycled
-## leaving remainder of 48 items)</code></pre>
-<pre class="r"><code>datat[, type := c(rep(&quot;Real&quot;, nrow(data_test_2qt)), rep(&quot;Predicted&quot;, nrow(data_test_2qt)))]
+                                   data_time = data_test_2qt[, date_time])))
+datat[, type := c(rep(&quot;Real&quot;, nrow(data_test_2qt)), rep(&quot;Predicted&quot;, nrow(data_test_2qt)))]
 ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
   geom_line(size = 0.8) +
   theme_bw() +
@@ -938,19 +901,13 @@ ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
 <pre class="r"><code>data_test_3qt &lt;- DT[(type == n_type[1] &amp; date %in% n_date[183:274])]
 matrix_test_3qt &lt;- data.table(Load = data_test_3qt[, value],
                            Daily = rep(1:period, 91),
-                           Weekly = data_test_3qt[, week_num])</code></pre>
-<pre><code>## Warning in data.table(Load = data_test_3qt[, value], Daily =
-## rep(1:period, : Item 2 is of size 4368 but maximum size is 4416 (recycled
-## leaving remainder of 48 items)</code></pre>
-<pre class="r"><code>pred_3qt &lt;- predict(gam_new_4, matrix_test_3qt[1:(7*period)],interval=&quot;confidence&quot;, level = 0.95)
+                           Weekly = data_test_3qt[, week_num])
+pred_3qt &lt;- predict(gam_new_4, matrix_test_3qt[1:(7*period)],interval=&quot;confidence&quot;, level = 0.95)
 
 datat &lt;- rbindlist(list(data_test_3qt[, .(value, date_time)],
                         data.table(value = pred_3qt,
-                                   data_time = data_test_3qt[, date_time])))</code></pre>
-<pre><code>## Warning in data.table(value = pred_3qt, data_time = data_test_3qt[,
-## date_time]): Item 1 is of size 336 but maximum size is 4416 (recycled
-## leaving remainder of 48 items)</code></pre>
-<pre class="r"><code>datat[, type := c(rep(&quot;Real&quot;, nrow(data_test_3qt)), rep(&quot;Predicted&quot;, nrow(data_test_3qt)))]
+                                   data_time = data_test_3qt[, date_time])))
+datat[, type := c(rep(&quot;Real&quot;, nrow(data_test_3qt)), rep(&quot;Predicted&quot;, nrow(data_test_3qt)))]
 ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
   geom_line(size = 0.8) +
   theme_bw() +
@@ -963,19 +920,13 @@ ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
 <pre class="r"><code>data_test_4qt &lt;- DT[(type == n_type[1] &amp; date %in% n_date[274:365])]
 matrix_test_4qt &lt;- data.table(Load = data_test_4qt[, value],
                            Daily = rep(1:period, 91),
-                           Weekly = data_test_4qt[, week_num])</code></pre>
-<pre><code>## Warning in data.table(Load = data_test_4qt[, value], Daily =
-## rep(1:period, : Item 2 is of size 4368 but maximum size is 4416 (recycled
-## leaving remainder of 48 items)</code></pre>
-<pre class="r"><code>pred_4qt &lt;- predict(gam_new_4, matrix_test_4qt[1:(7*period)],interval=&quot;confidence&quot;, level = 0.95)
+                           Weekly = data_test_4qt[, week_num])
+pred_4qt &lt;- predict(gam_new_4, matrix_test_4qt[1:(7*period)],interval=&quot;confidence&quot;, level = 0.95)
 
 datat &lt;- rbindlist(list(data_test_4qt[, .(value, date_time)],
                         data.table(value = pred_4qt,
-                                   data_time = data_test_4qt[, date_time])))</code></pre>
-<pre><code>## Warning in data.table(value = pred_4qt, data_time = data_test_4qt[,
-## date_time]): Item 1 is of size 336 but maximum size is 4416 (recycled
-## leaving remainder of 48 items)</code></pre>
-<pre class="r"><code>datat[, type := c(rep(&quot;Real&quot;, nrow(data_test_4qt)), rep(&quot;Predicted&quot;, nrow(data_test_4qt)))]
+                                   data_time = data_test_4qt[, date_time])))
+datat[, type := c(rep(&quot;Real&quot;, nrow(data_test_4qt)), rep(&quot;Predicted&quot;, nrow(data_test_4qt)))]
 ggplot(data = datat, aes(date_time, value, group = type, colour = type)) +
   geom_line(size = 0.8) +
   theme_bw() +
